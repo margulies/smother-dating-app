@@ -10,5 +10,7 @@ echo "Build completed!"
 echo "Committing build files..."
 git config advice.addIgnoredFile false
 git add build
-git commit -m "Update build files for Netlify deployment"
+git commit -m "Update build files for Netlify deployment" || true
+
+echo "Pushing to GitHub..."
 git push origin main
