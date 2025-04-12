@@ -121,10 +121,10 @@ const Dashboard = () => {
               </Typography>
             </Box>
             <Typography variant="h6" color="text.secondary" sx={{ mt: 2 }}>
-              Where moms find the perfect match for their little darlings
+              Where moms create lasting connections for their children
             </Typography>
             <Typography variant="body1" sx={{ mt: 2 }}>
-              Ready to find your child's soulmate? Let's get started!
+              Ready to help your child find their special someone? Let's start the journey!
             </Typography>
           </Card>
         </Grid>
@@ -141,7 +141,7 @@ const Dashboard = () => {
                   {stats.matches}
                 </Typography>
                 <Typography variant="body2" align="center" color="text.secondary">
-                  Perfect Matches
+                  Matches Achieved
                 </Typography>
               </Card>
             </Grid>
