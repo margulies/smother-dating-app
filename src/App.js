@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -75,8 +75,6 @@ const theme = createTheme({
 });
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  
   // Check if user is logged in
   const checkAuth = () => {
     const token = localStorage.getItem('token');
@@ -97,35 +95,57 @@ function App() {
       <Router>
         <Navbar isAuthenticated={checkAuth()} />
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login setIsAuthenticated={setIsAuthenticated} />} />
-          <Route path="/register" element={<Register setIsAuthenticated={setIsAuthenticated} />} />
-          <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/create-profile" element={
-            <ProtectedRoute>
-              <ProfileCreate />
-            </ProtectedRoute>
-          } />
-          <Route path="/profile/:id" element={<ProfileView />} />
-          <Route path="/browse" element={
-            <ProtectedRoute>
-              <BrowseProfiles />
-            </ProtectedRoute>
-          } />
-          <Route path="/matches" element={
-            <ProtectedRoute>
-              <Matches />
-            </ProtectedRoute>
-          } />
-          <Route path="/conversation/:matchId" element={
-            <ProtectedRoute>
-              <Conversation />
-            </ProtectedRoute>
-          } />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/browse"
+            element={
+              <ProtectedRoute>
+                <BrowseProfiles />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/matches"
+            element={
+              <ProtectedRoute>
+                <Matches />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile/create"
+            element={
+              <ProtectedRoute>
+                <ProfileCreate />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile/:id"
+            element={
+              <ProtectedRoute>
+                <ProfileView />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/conversation/:id"
+            element={
+              <ProtectedRoute>
+                <Conversation />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>
         <Footer />
       </Router>
