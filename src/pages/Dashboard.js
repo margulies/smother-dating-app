@@ -17,14 +17,21 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemIcon
+  ListItemIcon,
+  Avatar,
+  Chip,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   Person as PersonIcon,
   Message as MessageIcon,
   Search as SearchIcon,
   Favorite as FavoriteIcon,
-  Edit as EditIcon
+  Edit as EditIcon,
+  EmojiEmotions as EmojiEmotionsIcon,
+  Celebration as CelebrationIcon,
+  LocalFireDepartment as LocalFireDepartmentIcon
 } from '@mui/icons-material';
 
 const Dashboard = () => {
@@ -33,49 +40,57 @@ const Dashboard = () => {
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState({
     matches: 0,
+    messages: 0,
     views: 0,
-    pendingRequests: 0
+    likes: 0
   });
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  const fetchUserData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
+      const profileResponse = await axios.get(`${config.API_URL}/profiles/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setProfile(profileResponse.data);
+
+      // Mock stats for now
+      setStats({
+        matches: Math.floor(Math.random() * 10) + 1,
+        messages: Math.floor(Math.random() * 50) + 10,
+        views: Math.floor(Math.random() * 200) + 50,
+        likes: Math.floor(Math.random() * 30) + 10
+      });
+
+      setLoading(false);
+    } catch (error) {
+      setError('Failed to load profile data. Are you sure you have a profile?');
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          navigate('/login');
-          return;
-        }
-
-        // Fetch user profile
-        const profileResponse = await axios.get(`${config.API_URL}/profiles/me`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        setProfile(profileResponse.data);
-
-        // Fetch stats
-        const statsResponse = await axios.get(`${config.API_URL}/matches/stats`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        setStats(statsResponse.data);
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching dashboard data:', err);
-        if (err.response && err.response.status === 404) {
-          // Profile not found, user needs to create one
-          setProfile(null);
-          setLoading(false);
-        } else {
-          setError('Failed to load dashboard data. Please try again later.');
-          setLoading(false);
-        }
-      }
-    };
-
     fetchUserData();
-  }, [navigate]);
+  }, []);
+
+  const getProfileImage = () => {
+    // Return a random stock image URL
+    const images = [
+      'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61',
+      'https://images.unsplash.com/photo-1544005313-94ddf0286df2',
+      'https://images.unsplash.com/photo-1580489944761-15a19d654956',
+      'https://images.unsplash.com/photo-1573497014578-4aed9e78cff9',
+      'https://images.unsplash.com/photo-1542156822-6924d1a71ace'
+    ];
+    return images[Math.floor(Math.random() * images.length)];
+  };
 
   if (loading) {
     return (
@@ -87,173 +102,172 @@ const Dashboard = () => {
 
   if (error) {
     return (
-      <Container maxWidth="md" sx={{ py: 4 }}>
+      <Box sx={{ p: 4 }}>
         <Alert severity="error">{error}</Alert>
-      </Container>
-    );
-  }
-
-  // If no profile exists yet
-  if (!profile) {
-    return (
-      <Container maxWidth="md" sx={{ py: 8 }}>
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="h4" gutterBottom>Welcome to Smother!</Typography>
-          <Typography variant="body1" paragraph>
-            You haven't created a profile for your child yet. Create a profile to start finding matches!
-          </Typography>
-          <Button
-            variant="contained"
-            color="primary"
-            size="large"
-            component={Link}
-            to="/create-profile"
-            startIcon={<EditIcon />}
-          >
-            Create Profile
-          </Button>
-        </Paper>
-      </Container>
+      </Box>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Dashboard
-      </Typography>
-
-      <Grid container spacing={4}>
-        {/* Profile Summary */}
-        <Grid item xs={12} md={4}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                {profile.childName}'s Profile
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Grid container spacing={3}>
+        {/* Welcome Card */}
+        <Grid item xs={12}>
+          <Card sx={{ p: 3, bgcolor: 'background.paper', boxShadow: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <EmojiEmotionsIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+              <Typography variant="h4" component="h2">
+                Welcome to Smother!
               </Typography>
-              <Divider sx={{ my: 2 }} />
-              <Box sx={{ textAlign: 'center', mb: 2 }}>
-                <Box
-                  component="img"
-                  src={profile.photos && profile.photos.length > 0 
-                    ? profile.photos[0] 
-                    : 'https://via.placeholder.com/150'}
-                  alt={profile.childName}
-                  sx={{
-                    width: 150,
-                    height: 150,
-                    borderRadius: '50%',
-                    objectFit: 'cover',
-                    mb: 2
-                  }}
-                />
-                <Typography variant="h5">{profile.childName}, {profile.childAge}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {profile.location}
-                </Typography>
-              </Box>
-              <Button
-                variant="outlined"
-                fullWidth
-                component={Link}
-                to={`/profile/${profile._id}`}
-                startIcon={<PersonIcon />}
-                sx={{ mb: 1 }}
-              >
-                View Profile
-              </Button>
-              <Button
-                variant="contained"
-                fullWidth
-                component={Link}
-                to="/create-profile"
-                startIcon={<EditIcon />}
-              >
-                Edit Profile
-              </Button>
-            </CardContent>
+            </Box>
+            <Typography variant="h6" color="text.secondary" sx={{ mt: 2 }}>
+              Where moms find the perfect match for their little darlings
+            </Typography>
+            <Typography variant="body1" sx={{ mt: 2 }}>
+              Ready to find your child's soulmate? Let's get started!
+            </Typography>
           </Card>
         </Grid>
 
-        {/* Stats */}
+        {/* Stats Grid */}
+        <Grid item xs={12} md={8}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card sx={{ p: 2, bgcolor: 'background.paper', boxShadow: 2 }}>
+                <Typography variant="h6" align="center">
+                  <CelebrationIcon sx={{ color: 'success.main', fontSize: 30 }} />
+                </Typography>
+                <Typography variant="h4" align="center" sx={{ mt: 1 }}>
+                  {stats.matches}
+                </Typography>
+                <Typography variant="body2" align="center" color="text.secondary">
+                  Perfect Matches
+                </Typography>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card sx={{ p: 2, bgcolor: 'background.paper', boxShadow: 2 }}>
+                <Typography variant="h6" align="center">
+                  <MessageIcon sx={{ color: 'primary.main', fontSize: 30 }} />
+                </Typography>
+                <Typography variant="h4" align="center" sx={{ mt: 1 }}>
+                  {stats.messages}
+                </Typography>
+                <Typography variant="body2" align="center" color="text.secondary">
+                  Messages Sent
+                </Typography>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card sx={{ p: 2, bgcolor: 'background.paper', boxShadow: 2 }}>
+                <Typography variant="h6" align="center">
+                  <LocalFireDepartmentIcon sx={{ color: 'error.main', fontSize: 30 }} />
+                </Typography>
+                <Typography variant="h4" align="center" sx={{ mt: 1 }}>
+                  {stats.likes}
+                </Typography>
+                <Typography variant="body2" align="center" color="text.secondary">
+                  Hearts Set Aflame
+                </Typography>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card sx={{ p: 2, bgcolor: 'background.paper', boxShadow: 2 }}>
+                <Typography variant="h6" align="center">
+                  <PersonIcon sx={{ color: 'info.main', fontSize: 30 }} />
+                </Typography>
+                <Typography variant="h4" align="center" sx={{ mt: 1 }}>
+                  {stats.views}
+                </Typography>
+                <Typography variant="body2" align="center" color="text.secondary">
+                  Profile Views
+                </Typography>
+              </Card>
+            </Grid>
+          </Grid>
+        </Grid>
+
+        {/* Profile Card */}
         <Grid item xs={12} md={4}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Activity
+          <Card sx={{ p: 3, bgcolor: 'background.paper', boxShadow: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+              <Avatar 
+                src={profile?.photoUrl || getProfileImage()} 
+                sx={{ width: 120, height: 120 }}
+              />
+              <Typography variant="h5" component="h3">
+                {profile?.name || 'Your Profile'}
               </Typography>
-              <Divider sx={{ my: 2 }} />
-              <List>
-                <ListItem>
-                  <ListItemIcon>
-                    <FavoriteIcon color="primary" />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={`${stats.matches} Matches`}
-                    secondary="People who matched with your profile"
-                  />
-                </ListItem>
-                <ListItem>
-                  <ListItemIcon>
-                    <PersonIcon color="primary" />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={`${stats.views} Profile Views`}
-                    secondary="People who viewed your profile"
-                  />
-                </ListItem>
-                <ListItem>
-                  <ListItemIcon>
-                    <MessageIcon color="primary" />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={`${stats.pendingRequests} Pending Requests`}
-                    secondary="Match requests waiting for your response"
-                  />
-                </ListItem>
-              </List>
-            </CardContent>
+              <Typography variant="body2" color="text.secondary">
+                {profile?.bio || 'Tell us about your little darling!'}
+              </Typography>
+              <Button 
+                variant="contained" 
+                color="primary" 
+                startIcon={<EditIcon />} 
+                fullWidth
+                component={Link}
+                to="/profile/create"
+                sx={{ mt: 2 }}
+              >
+                Update Profile
+              </Button>
+            </Box>
           </Card>
         </Grid>
 
         {/* Quick Actions */}
-        <Grid item xs={12} md={4}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Quick Actions
-              </Typography>
-              <Divider sx={{ my: 2 }} />
-              <Button
-                variant="contained"
-                fullWidth
-                component={Link}
-                to="/browse"
-                startIcon={<SearchIcon />}
-                sx={{ mb: 2 }}
-              >
-                Browse Profiles
-              </Button>
-              <Button
-                variant="outlined"
-                fullWidth
-                component={Link}
-                to="/matches"
-                startIcon={<FavoriteIcon />}
-                sx={{ mb: 2 }}
-              >
-                View Matches
-              </Button>
-              <Button
-                variant="outlined"
-                fullWidth
-                component={Link}
-                to="/messages"
-                startIcon={<MessageIcon />}
-              >
-                Messages
-              </Button>
-            </CardContent>
+        <Grid item xs={12}>
+          <Card sx={{ p: 3, bgcolor: 'background.paper', boxShadow: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Quick Actions
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Button 
+                  variant="outlined" 
+                  fullWidth 
+                  startIcon={<SearchIcon />} 
+                  component={Link}
+                  to="/browse"
+                >
+                  Browse Profiles
+                </Button>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Button 
+                  variant="outlined" 
+                  fullWidth 
+                  startIcon={<FavoriteIcon />} 
+                  component={Link}
+                  to="/matches"
+                >
+                  View Matches
+                </Button>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Button 
+                  variant="outlined" 
+                  fullWidth 
+                  startIcon={<MessageIcon />} 
+                  component={Link}
+                  to="/messages"
+                >
+                  Send Message
+                </Button>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Button 
+                  variant="outlined" 
+                  fullWidth 
+                  startIcon={<EditIcon />} 
+                  component={Link}
+                  to="/profile/create"
+                >
+                  Edit Profile
+                </Button>
+              </Grid>
+            </Grid>
           </Card>
         </Grid>
       </Grid>

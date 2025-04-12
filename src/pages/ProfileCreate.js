@@ -1,125 +1,80 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import config from '../utils/config';
 import {
   Box,
   Container,
   Typography,
-  TextField,
-  Button,
   Grid,
-  MenuItem,
+  Card,
+  CardContent,
+  Button,
+  TextField,
   FormControl,
   InputLabel,
   Select,
-  Chip,
-  OutlinedInput,
-  Checkbox,
+  MenuItem,
   FormControlLabel,
-  Paper,
-  Stepper,
-  Step,
-  StepLabel,
+  Checkbox,
   CircularProgress,
-  Alert
+  Alert,
+  Avatar,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
-
-const ITEM_HEIGHT = 48;
-const ITEM_PADDING_TOP = 8;
-const MenuProps = {
-  PaperProps: {
-    style: {
-      maxHeight: ITEM_HEIGHT * 4.5 + ITEM_PADDING_TOP,
-      width: 250,
-    },
-  },
-};
-
-const interests = [
-  'Reading', 'Cooking', 'Travel', 'Music', 'Art', 'Sports', 'Fitness',
-  'Movies', 'Theater', 'Photography', 'Dancing', 'Hiking', 'Gaming',
-  'Technology', 'Fashion', 'Food', 'Writing', 'Yoga', 'Meditation',
-  'Volunteering', 'Animals', 'Nature', 'Science', 'History'
-];
+import {
+  Person as PersonIcon,
+  Edit as EditIcon,
+  CameraAlt as CameraAltIcon,
+  EmojiEmotions as EmojiEmotionsIcon,
+  Favorite as FavoriteIcon
+} from '@mui/icons-material';
 
 const ProfileCreate = () => {
-  const navigate = useNavigate();
-  const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [existingProfile, setExistingProfile] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [formData, setFormData] = useState({
-    childName: '',
-    childAge: '',
-    childGender: '',
-    childOccupation: '',
-    childEducation: '',
-    childInterests: [],
+    name: '',
+    age: '',
     location: '',
     bio: '',
-    lookingFor: '',
-    preferredAgeMin: 18,
-    preferredAgeMax: 40,
-    preferredGender: '',
-    photos: []
+    interests: '',
+    photoUrl: ''
   });
+  const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // Check if user already has a profile
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          navigate('/login');
-          return;
-        }
-
-        const response = await axios.get(`${config.API_URL}/profiles/me`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (response.data) {
-          setExistingProfile(response.data);
-          setFormData(response.data);
-        }
-      } catch (err) {
-        // If 404, user doesn't have a profile yet, which is fine
-        if (err.response && err.response.status !== 404) {
-          setError('Failed to check for existing profile. Please try again.');
-        }
+  const fetchProfile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
       }
-    };
 
+      const response = await axios.get(`${config.API_URL}/profiles/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setProfile(response.data);
+      setFormData({
+        name: response.data.name,
+        age: response.data.age,
+        location: response.data.location,
+        bio: response.data.bio,
+        interests: response.data.interests?.join(', ') || '',
+        photoUrl: response.data.photoUrl || ''
+      });
+    } catch (error) {
+      setError('Failed to load profile data. Please try again later.');
+    }
+  };
+
+  useEffect(() => {
     fetchProfile();
-  }, [navigate]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-  };
-
-  const handleInterestsChange = (event) => {
-    const {
-      target: { value },
-    } = event;
-    
-    setFormData({
-      ...formData,
-      childInterests: typeof value === 'string' ? value.split(',') : value,
-    });
-  };
-
-  const handleNext = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep + 1);
-  };
-
-  const handleBack = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep - 1);
-  };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -133,281 +88,186 @@ const ProfileCreate = () => {
         return;
       }
 
-      const method = existingProfile ? 'put' : 'post';
-      const url = existingProfile 
-        ? `${config.API_URL}/profiles/${existingProfile._id}`
-        : `${config.API_URL}/profiles`;
-
       const response = await axios({
-        method,
-        url,
-        data: formData,
+        method: profile ? 'put' : 'post',
+        url: profile ? `${config.API_URL}/profiles/${profile._id}` : `${config.API_URL}/profiles`,
+        data: {
+          name: formData.name,
+          age: formData.age,
+          location: formData.location,
+          bio: formData.bio,
+          interests: formData.interests.split(',').map(interest => interest.trim()),
+          photoUrl: formData.photoUrl || getStockImage()
+        },
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      setLoading(false);
       navigate('/dashboard');
-    } catch (err) {
+    } catch (error) {
+      setError('Failed to save profile. Please try again.');
+    } finally {
       setLoading(false);
-      setError(err.response?.data?.message || 'Failed to save profile. Please try again.');
     }
   };
 
-  const steps = ['Basic Information', 'Personal Details', 'Preferences'];
+  const getStockImage = () => {
+    const images = [
+      'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61',
+      'https://images.unsplash.com/photo-1544005313-94ddf0286df2',
+      'https://images.unsplash.com/photo-1580489944761-15a19d654956',
+      'https://images.unsplash.com/photo-1573497014578-4aed9e78cff9',
+      'https://images.unsplash.com/photo-1542156822-6924d1a71ace'
+    ];
+    return images[Math.floor(Math.random() * images.length)];
+  };
 
-  const getStepContent = (step) => {
-    switch (step) {
-      case 0:
-        return (
-          <Box>
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 4 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
+  }
+
+  return (
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+        <Card sx={{ p: 4, bgcolor: 'background.paper', boxShadow: 3, width: '100%', maxWidth: 800 }}>
+          <Typography variant="h4" component="h1" align="center" gutterBottom>
+            <EmojiEmotionsIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+            {' '}Create Your Child's Profile
+          </Typography>
+          <Typography variant="body1" align="center" sx={{ mb: 4 }}>
+            Share the wonderful qualities of your little darling with the world!
+          </Typography>
+
+          <form onSubmit={handleSubmit}>
             <Grid container spacing={3}>
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} md={6}>
                 <TextField
-                  required
                   fullWidth
+                  required
                   label="Child's Name"
-                  name="childName"
-                  value={formData.childName}
+                  name="name"
+                  value={formData.name}
                   onChange={handleChange}
+                  variant="outlined"
+                  helperText="What's the name of your little darling?"
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} md={6}>
                 <TextField
+                  fullWidth
                   required
-                  fullWidth
-                  label="Child's Age"
-                  name="childAge"
                   type="number"
-                  value={formData.childAge}
+                  label="Age"
+                  name="age"
+                  value={formData.age}
                   onChange={handleChange}
-                  inputProps={{ min: 18 }}
+                  variant="outlined"
+                  InputProps={{
+                    inputProps: { min: 0, max: 18 }
+                  }}
+                  helperText="How old is your little one?"
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth required>
-                  <InputLabel>Child's Gender</InputLabel>
-                  <Select
-                    name="childGender"
-                    value={formData.childGender}
-                    onChange={handleChange}
-                    label="Child's Gender"
-                  >
-                    <MenuItem value="male">Male</MenuItem>
-                    <MenuItem value="female">Female</MenuItem>
-                    <MenuItem value="non-binary">Non-binary</MenuItem>
-                    <MenuItem value="other">Other</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12}>
                 <TextField
                   fullWidth
+                  required
                   label="Location"
                   name="location"
                   value={formData.location}
                   onChange={handleChange}
-                  placeholder="City, State"
+                  variant="outlined"
+                  helperText="Where do you live?"
                 />
               </Grid>
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Bio"
+                  multiline
+                  rows={4}
+                  label="About Your Child"
                   name="bio"
                   value={formData.bio}
                   onChange={handleChange}
-                  multiline
-                  rows={4}
-                  placeholder="Tell us about your child..."
-                />
-              </Grid>
-            </Grid>
-          </Box>
-        );
-      case 1:
-        return (
-          <Box>
-            <Grid container spacing={3}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Occupation"
-                  name="childOccupation"
-                  value={formData.childOccupation}
-                  onChange={handleChange}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Education"
-                  name="childEducation"
-                  value={formData.childEducation}
-                  onChange={handleChange}
+                  variant="outlined"
+                  helperText="Tell us about your child's personality and interests"
                 />
               </Grid>
               <Grid item xs={12}>
-                <FormControl fullWidth>
-                  <InputLabel>Interests</InputLabel>
-                  <Select
-                    multiple
-                    name="childInterests"
-                    value={formData.childInterests}
-                    onChange={handleInterestsChange}
-                    input={<OutlinedInput label="Interests" />}
-                    renderValue={(selected) => (
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {selected.map((value) => (
-                          <Chip key={value} label={value} />
-                        ))}
-                      </Box>
-                    )}
-                    MenuProps={MenuProps}
+                <TextField
+                  fullWidth
+                  label="Interests"
+                  name="interests"
+                  value={formData.interests}
+                  onChange={handleChange}
+                  variant="outlined"
+                  helperText="List your child's interests (separated by commas)"
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Profile Picture
+                  </Typography>
+                  <Avatar 
+                    src={formData.photoUrl || getStockImage()} 
+                    sx={{ width: 200, height: 200 }}
+                  />
+                  <Button
+                    variant="outlined"
+                    startIcon={<CameraAltIcon />}
+                    sx={{ mt: 2 }}
+                    onClick={() => setFormData(prev => ({ ...prev, photoUrl: getStockImage() }))}
                   >
-                    {interests.map((interest) => (
-                      <MenuItem key={interest} value={interest}>
-                        <Checkbox checked={formData.childInterests.indexOf(interest) > -1} />
-                        {interest}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Photo URL"
-                  name="photoUrl"
-                  placeholder="Enter a URL to your child's photo"
-                  helperText="We'll add photo upload functionality in the future. For now, please provide a URL to an existing image."
-                  onChange={(e) => setFormData({...formData, photos: [e.target.value]})}
-                />
+                    Change Photo
+                  </Button>
+                </Box>
               </Grid>
             </Grid>
-          </Box>
-        );
-      case 2:
-        return (
-          <Box>
-            <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Looking For"
-                  name="lookingFor"
-                  value={formData.lookingFor}
-                  onChange={handleChange}
-                  multiline
-                  rows={3}
-                  placeholder="What kind of person would be a good match for your child?"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Preferred Gender</InputLabel>
-                  <Select
-                    name="preferredGender"
-                    value={formData.preferredGender}
-                    onChange={handleChange}
-                    label="Preferred Gender"
-                  >
-                    <MenuItem value="male">Male</MenuItem>
-                    <MenuItem value="female">Female</MenuItem>
-                    <MenuItem value="non-binary">Non-binary</MenuItem>
-                    <MenuItem value="no-preference">No Preference</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle1" gutterBottom>
-                  Preferred Age Range
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={6}>
-                    <TextField
-                      fullWidth
-                      label="Min Age"
-                      name="preferredAgeMin"
-                      type="number"
-                      value={formData.preferredAgeMin}
-                      onChange={handleChange}
-                      inputProps={{ min: 18 }}
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <TextField
-                      fullWidth
-                      label="Max Age"
-                      name="preferredAgeMax"
-                      type="number"
-                      value={formData.preferredAgeMax}
-                      onChange={handleChange}
-                      inputProps={{ min: formData.preferredAgeMin }}
-                    />
-                  </Grid>
-                </Grid>
-              </Grid>
-            </Grid>
-          </Box>
-        );
-      default:
-        return 'Unknown step';
-    }
-  };
 
-  return (
-    <Container maxWidth="md" sx={{ py: 8 }}>
-      <Paper sx={{ p: { xs: 2, md: 4 } }}>
-        <Typography variant="h4" component="h1" align="center" gutterBottom>
-          {existingProfile ? 'Edit Profile' : 'Create Profile'}
-        </Typography>
-        <Typography variant="body1" align="center" color="text.secondary" paragraph>
-          Tell us about your child to help them find the perfect match
-        </Typography>
-
-        {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
-
-        <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-          {steps.map((label) => (
-            <Step key={label}>
-              <StepLabel>{label}</StepLabel>
-            </Step>
-          ))}
-        </Stepper>
-
-        <form onSubmit={handleSubmit}>
-          {getStepContent(activeStep)}
-
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
-            <Button
-              disabled={activeStep === 0}
-              onClick={handleBack}
-            >
-              Back
-            </Button>
-            <Box>
-              {activeStep === steps.length - 1 ? (
-                <Button
-                  variant="contained"
-                  type="submit"
-                  disabled={loading}
-                  sx={{ ml: 1 }}
-                >
-                  {loading ? <CircularProgress size={24} /> : 'Save Profile'}
-                </Button>
-              ) : (
-                <Button
-                  variant="contained"
-                  onClick={handleNext}
-                  sx={{ ml: 1 }}
-                >
-                  Next
-                </Button>
-              )}
+            <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center', gap: 2 }}>
+              <Button
+                variant="contained"
+                color="primary"
+                size="large"
+                type="submit"
+                startIcon={<EditIcon />}
+                disabled={loading}
+              >
+                {profile ? 'Update Profile' : 'Create Profile'}
+              </Button>
+              <Button
+                variant="outlined"
+                color="primary"
+                size="large"
+                component={Link}
+                to="/dashboard"
+              >
+                Cancel
+              </Button>
             </Box>
-          </Box>
-        </form>
-      </Paper>
+          </form>
+        </Card>
+      </Box>
     </Container>
   );
 };

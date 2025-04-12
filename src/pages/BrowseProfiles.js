@@ -9,112 +9,107 @@ import {
   Grid,
   Card,
   CardContent,
-  CardMedia,
   Button,
   CircularProgress,
   Alert,
-  Paper,
-  Chip,
+  TextField,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  TextField,
-  Slider,
+  Chip,
+  Paper,
+  useTheme,
+  useMediaQuery,
+  IconButton,
   Divider,
-  IconButton
+  Avatar
 } from '@mui/material';
 import {
+  Search as SearchIcon,
   Favorite as FavoriteIcon,
-  FavoriteBorder as FavoriteBorderIcon,
+  Message as MessageIcon,
   Person as PersonIcon,
-  LocationOn as LocationIcon,
-  FilterList as FilterIcon,
-  Close as CloseIcon
+  FilterList as FilterListIcon,
+  Clear as ClearIcon
 } from '@mui/icons-material';
 
 const BrowseProfiles = () => {
-  const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showFilters, setShowFilters] = useState(false);
+  const [profiles, setProfiles] = useState([]);
   const [filters, setFilters] = useState({
-    gender: '',
-    ageMin: 18,
-    ageMax: 70,
-    location: '',
+    age: '',
     interests: []
   });
+  const [showFilters, setShowFilters] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  useEffect(() => {
-    const fetchProfiles = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          return;
-        }
-
-        // Build query string from filters
-        let queryParams = '';
-        if (filters.gender) queryParams += `gender=${filters.gender}&`;
-        if (filters.ageMin) queryParams += `ageMin=${filters.ageMin}&`;
-        if (filters.ageMax) queryParams += `ageMax=${filters.ageMax}&`;
-        if (filters.location) queryParams += `location=${filters.location}&`;
-
-        const response = await axios.get(`${config.API_URL}/profiles?${queryParams}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        setProfiles(response.data);
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching profiles:', err);
-        setError('Failed to load profiles. Please try again later.');
-        setLoading(false);
+  const fetchProfiles = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/login';
+        return;
       }
-    };
 
-    fetchProfiles();
-  }, [filters]);
+      const queryParams = new URLSearchParams();
+      if (filters.age) {
+        queryParams.append('age', filters.age);
+      }
+      if (filters.interests.length > 0) {
+        queryParams.append('interests', filters.interests.join(','));
+      }
 
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-    setFilters({
-      ...filters,
-      [name]: value
-    });
-  };
-
-  const handleAgeRangeChange = (event, newValue) => {
-    setFilters({
-      ...filters,
-      ageMin: newValue[0],
-      ageMax: newValue[1]
-    });
+      const response = await axios.get(`${config.API_URL}/profiles?${queryParams}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setProfiles(response.data);
+      setLoading(false);
+    } catch (error) {
+      setError('Failed to load profiles. Please try again.');
+      setLoading(false);
+    }
   };
 
   const handleLike = async (profileId) => {
     try {
       const token = localStorage.getItem('token');
-      
-      await axios.post(`${config.API_URL}/matches/request/${profileId}`, 
-        { message: 'I think our children would be a great match!' },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
-      // Update the profile in the list to show it's been liked
-      setProfiles(profiles.map(profile => 
-        profile._id === profileId 
-          ? { ...profile, hasLiked: true } 
-          : profile
-      ));
-    } catch (err) {
-      setError('Failed to like profile. Please try again.');
+      await axios.post(`${config.API_URL}/matches/request/${profileId}`, {
+        message: 'I think our children would be a great match!'
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // Refresh profiles after liking
+      fetchProfiles();
+    } catch (error) {
+      setError('Failed to send match request. Please try again.');
     }
   };
 
-  const toggleFilters = () => {
-    setShowFilters(!showFilters);
+  const getProfileImage = (profile) => {
+    return profile.photoUrl || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61';
+  };
+
+  useEffect(() => {
+    fetchProfiles();
+  }, [filters.age, filters.interests.join(',')]);
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleInterestChange = (e) => {
+    const { value } = e.target;
+    setFilters(prev => ({
+      ...prev,
+      interests: value
+    }));
   };
 
   if (loading) {
@@ -127,179 +122,158 @@ const BrowseProfiles = () => {
 
   if (error) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Box sx={{ p: 4 }}>
         <Alert severity="error">{error}</Alert>
-      </Container>
+      </Box>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h4" component="h1">
-          Browse Profiles
-        </Typography>
-        <Button
-          variant="outlined"
-          startIcon={<FilterIcon />}
-          onClick={toggleFilters}
-        >
-          Filters
-        </Button>
-      </Box>
-
-      {/* Filters */}
-      {showFilters && (
-        <Paper sx={{ p: 3, mb: 4 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6">Filters</Typography>
-            <IconButton onClick={toggleFilters}>
-              <CloseIcon />
-            </IconButton>
-          </Box>
-          
-          <Grid container spacing={3}>
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth>
-                <InputLabel>Gender</InputLabel>
-                <Select
-                  name="gender"
-                  value={filters.gender}
-                  onChange={handleFilterChange}
-                  label="Gender"
-                >
-                  <MenuItem value="">Any</MenuItem>
-                  <MenuItem value="male">Male</MenuItem>
-                  <MenuItem value="female">Female</MenuItem>
-                  <MenuItem value="non-binary">Non-binary</MenuItem>
-                  <MenuItem value="other">Other</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                fullWidth
-                label="Location"
-                name="location"
-                value={filters.location}
-                onChange={handleFilterChange}
-                placeholder="City or State"
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <Typography id="age-range-slider" gutterBottom>
-                Age Range: {filters.ageMin} - {filters.ageMax}
-              </Typography>
-              <Slider
-                value={[filters.ageMin, filters.ageMax]}
-                onChange={handleAgeRangeChange}
-                valueLabelDisplay="auto"
-                min={18}
-                max={80}
-                aria-labelledby="age-range-slider"
-              />
-            </Grid>
-          </Grid>
-        </Paper>
-      )}
-
-      {profiles.length === 0 ? (
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="h6" gutterBottom>No profiles found</Typography>
-          <Typography variant="body1" color="text.secondary">
-            Try adjusting your filters or check back later for new profiles.
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+        <Box sx={{ width: '100%', maxWidth: 800 }}>
+          <Typography variant="h4" component="h1" align="center" gutterBottom>
+            <PersonIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+            {' '}Browse Profiles
           </Typography>
-        </Paper>
-      ) : (
-        <Grid container spacing={3}>
-          {profiles.map((profile) => (
-            <Grid item xs={12} sm={6} md={4} key={profile._id}>
-              <Card sx={{ 
-                height: '100%', 
-                display: 'flex', 
-                flexDirection: 'column',
-                transition: 'transform 0.2s',
-                '&:hover': {
-                  transform: 'translateY(-5px)',
-                  boxShadow: 6
-                }
-              }}>
-                <CardMedia
-                  component="img"
-                  height="240"
-                  image={profile.photos && profile.photos.length > 0 
-                    ? profile.photos[0] 
-                    : 'https://via.placeholder.com/300x240?text=No+Photo'}
-                  alt={profile.childName}
-                />
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="h5" component="h2">
-                      {profile.childName}, {profile.childAge}
-                    </Typography>
-                    <IconButton 
-                      color={profile.hasLiked ? "primary" : "default"}
-                      onClick={() => !profile.hasLiked && handleLike(profile._id)}
-                      disabled={profile.hasLiked}
-                    >
-                      {profile.hasLiked ? <FavoriteIcon /> : <FavoriteBorderIcon />}
-                    </IconButton>
-                  </Box>
-                  
-                  {profile.location && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <LocationIcon fontSize="small" color="primary" sx={{ mr: 0.5 }} />
-                      <Typography variant="body2" color="text.secondary">
-                        {profile.location}
-                      </Typography>
-                    </Box>
-                  )}
-                  
-                  <Typography variant="body2" color="text.secondary" sx={{ 
-                    mb: 2,
-                    display: '-webkit-box',
-                    WebkitLineClamp: 3,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    height: '4.5em'
-                  }}>
-                    {profile.bio || 'No bio provided.'}
-                  </Typography>
-                  
-                  {profile.childInterests && profile.childInterests.length > 0 && (
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        Interests:
-                      </Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {profile.childInterests.slice(0, 3).map((interest) => (
-                          <Chip key={interest} label={interest} size="small" />
-                        ))}
-                        {profile.childInterests.length > 3 && (
-                          <Chip label={`+${profile.childInterests.length - 3} more`} size="small" variant="outlined" />
-                        )}
+          <Typography variant="body1" align="center" sx={{ mb: 4 }}>
+            Find the perfect match for your little darling!
+          </Typography>
+
+          <Paper sx={{ p: 3, mb: 4 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">Filters</Typography>
+              <IconButton onClick={() => setShowFilters(!showFilters)}>
+                <FilterListIcon />
+              </IconButton>
+            </Box>
+
+            {showFilters && (
+              <Box sx={{ mb: 2 }}>
+                <TextField
+                  fullWidth
+                  select
+                  label="Age"
+                  name="age"
+                  value={filters.age}
+                  onChange={handleFilterChange}
+                  SelectProps={{
+                    multiple: true,
+                    MenuProps: {
+                      PaperProps: {
+                        style: {
+                          maxHeight: 250,
+                          width: 250,
+                        },
+                      },
+                    },
+                  }}
+                >
+                  <MenuItem value="0-5">0-5 years</MenuItem>
+                  <MenuItem value="6-10">6-10 years</MenuItem>
+                  <MenuItem value="11-14">11-14 years</MenuItem>
+                  <MenuItem value="15-18">15-18 years</MenuItem>
+                </TextField>
+
+                <TextField
+                  fullWidth
+                  select
+                  label="Interests"
+                  name="interests"
+                  value={filters.interests}
+                  onChange={handleInterestChange}
+                  SelectProps={{
+                    multiple: true,
+                    MenuProps: {
+                      PaperProps: {
+                        style: {
+                          maxHeight: 250,
+                          width: 250,
+                        },
+                      },
+                    },
+                  }}
+                  sx={{ mt: 2 }}
+                >
+                  <MenuItem value="Sports">Sports</MenuItem>
+                  <MenuItem value="Music">Music</MenuItem>
+                  <MenuItem value="Reading">Reading</MenuItem>
+                  <MenuItem value="Art">Art</MenuItem>
+                  <MenuItem value="Dancing">Dancing</MenuItem>
+                  <MenuItem value="Science">Science</MenuItem>
+                  <MenuItem value="Animals">Animals</MenuItem>
+                </TextField>
+              </Box>
+            )}
+          </Paper>
+
+          {profiles.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography variant="h6">No profiles found</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Try adjusting your filters or come back later!
+              </Typography>
+            </Box>
+          ) : (
+            <Grid container spacing={3}>
+              {profiles.map((profile) => (
+                <Grid item xs={12} sm={6} md={4} key={profile._id}>
+                  <Card sx={{ height: '100%' }}>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                          <Avatar 
+                            src={getProfileImage(profile)} 
+                            sx={{ width: 120, height: 120 }}
+                          />
+                        </Box>
+                        <Typography variant="h6" component="h2" gutterBottom>
+                          {profile.name}, {profile.age}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          {profile.location}
+                        </Typography>
+                        <Typography variant="body1" paragraph>
+                          {profile.bio}
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                          {profile.interests?.map((interest) => (
+                            <Chip
+                              key={interest}
+                              label={interest}
+                              size="small"
+                              sx={{ bgcolor: 'primary.light' }}
+                            />
+                          ))}
+                        </Box>
+                        <Box sx={{ display: 'flex', gap: 1, mt: 'auto' }}>
+                          <Button
+                            variant="contained"
+                            color="primary"
+                            startIcon={<FavoriteIcon />}
+                            onClick={() => handleLike(profile._id)}
+                          >
+                            Like
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="primary"
+                            startIcon={<MessageIcon />}
+                            component={Link}
+                            to={`/conversation/${profile._id}`}
+                          >
+                            Message
+                          </Button>
+                        </Box>
                       </Box>
-                    </Box>
-                  )}
-                  
-                  <Button
-                    variant="contained"
-                    fullWidth
-                    component={Link}
-                    to={`/profile/${profile._id}`}
-                    startIcon={<PersonIcon />}
-                  >
-                    View Profile
-                  </Button>
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
             </Grid>
-          ))}
-        </Grid>
-      )}
+          )}
+        </Box>
+      </Box>
     </Container>
   );
 };
