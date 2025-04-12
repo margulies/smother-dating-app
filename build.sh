@@ -4,6 +4,8 @@
 export REACT_APP_API_URL="https://smother-server-35b3f9ca479c.herokuapp.com"
 
 echo "Building production version..."
+yarn install
+echo "Dependencies installed"
 yarn build
 echo "Build completed!"
 
